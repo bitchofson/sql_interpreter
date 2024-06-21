@@ -53,8 +53,15 @@ class SQLInterpreter:
                 result.append(context.curr_table.rows[i])
         return result
 
-    def executeGroupClauseNode(self, node: GroupClauseNode, context: Context) -> Any:
-        raise NotImplementedError('GroupClauseNode execution not implemented yet')
+    def executeGroupClauseNode(self, node: GroupClauseNode, context: Context) -> dict:
+        grouped_rows = {}
+        for row in context.curr_table.rows:
+            context.curr_row_index = context.curr_table.rows.index(row)
+            key = tuple(self.execute(expr, context) for expr in node.exprs)
+            if key not in grouped_rows:
+                grouped_rows[key] = []
+            grouped_rows[key].append(row)
+        return grouped_rows
 
     def executeHavingClauseNode(self, node: HavingClauseNode, context: Context) -> Any:
         raise NotImplementedError('HavingClauseNode execution not implemented yet')
@@ -88,17 +95,39 @@ class SQLInterpreter:
 
     def executeSelectNode(self, node: SelectNode, context: Context) -> Any:
         context.curr_table = context.get_table(node.tables.name)
-        if node.where:
+        if isinstance(node.where, WhereClauseNode):
             result_rows = self.execute(node.where, context)
         else:
             result_rows = context.curr_table.rows
-        if node.order_by:
+
+        if isinstance(node.group_by, GroupClauseNode):
+            context.curr_table.rows = result_rows
+            grouped_rows = self.execute(node.group_by, context)
+            result_rows = []
+            for key, group in grouped_rows.items():
+                context.curr_group_rows = group
+                context.curr_row_index = 0  # Инициализируем для агрегации
+                # Для каждой группы собираем агрегированные данные (здесь можно выполнять агрегатные функции)
+                result_rows.append([self.execute(expr, context) for expr in node.selects.exprs])
+        else:
+            context.curr_group_rows = None
+
+        if isinstance(node.order_by, OrderClauseNode):
             context.curr_table.rows = result_rows
             result_rows = self.execute(node.order_by, context)
+
         result = []
         for row in result_rows:
             context.curr_row_index = context.curr_table.rows.index(row)
-            result.append([self.execute(expr, context) for expr in node.selects.exprs])
+            row_result = []
+            for expr in node.selects.exprs:
+                executed_value = self.execute(expr, context)
+                if isinstance(expr, IdentNode) and expr.name == '*':
+                    row_result.extend(executed_value)  # Добавляем элементы напрямую
+                else:
+                    row_result.append(executed_value)
+            result.append(row_result)
+
         return result
 
     def executeNumNode(self, node: NumNode, context: Context) -> int | float:

@@ -19,7 +19,7 @@ def test_1(context: Context, interpreter: SQLInterpreter):
     context.curr_table = table_1
     context.tables['table_1'] = table_1
 
-    sql_query = '''select * from table_1 where col1=1 '''
+    sql_query = '''select * from table_1 where col1>4'''
     prog = sqlparser.mel_parser.parse(sql_query)
     print(*prog.tree, sep=os.linesep)
     print(interpreter.execute(prog, context))
@@ -36,7 +36,7 @@ def test_2(context: Context, interpreter: SQLInterpreter):
             [18, 'alex']
         ]
     )
-    sql_query = '''select name from table_2 where age >= 10 order by name'''
+    sql_query = '''select name from table_2 where age >= 10 order by name asc'''
     prog = sqlparser.mel_parser.parse(sql_query)
     print(*prog.tree, sep=os.linesep)
 
@@ -71,7 +71,7 @@ def main():
     interpreter = SQLInterpreter()
 
     # test_1(context=context, interpreter=interpreter)
-    test_2(context=context, interpreter=interpreter)
+    # test_2(context=context, interpreter=interpreter)
     # test_3(context=context, interpreter=interpreter)
 
 
