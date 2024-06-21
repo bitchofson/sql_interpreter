@@ -57,10 +57,20 @@ class SQLInterpreter:
         grouped_rows = {}
         for row in context.curr_table.rows:
             context.curr_row_index = context.curr_table.rows.index(row)
-            key = tuple(self.execute(expr, context) for expr in node.exprs)
+            key_elements = []
+
+            for expr in node.exprs:
+                value = self.execute(expr, context)[0]
+                # Преобразуем список в кортеж, чтобы он стал хэшируемым
+                if isinstance(value, list):
+                    value = tuple(value)
+                key_elements.append(value)
+
+            key = tuple(key_elements)[0]
             if key not in grouped_rows:
                 grouped_rows[key] = []
             grouped_rows[key].append(row)
+
         return grouped_rows
 
     def executeHavingClauseNode(self, node: HavingClauseNode, context: Context) -> Any:
@@ -101,14 +111,25 @@ class SQLInterpreter:
             result_rows = context.curr_table.rows
 
         if isinstance(node.group_by, GroupClauseNode):
+            # Группировка строк
             context.curr_table.rows = result_rows
             grouped_rows = self.execute(node.group_by, context)
             result_rows = []
-            for key, group in grouped_rows.items():
+
+            for group_key, group in grouped_rows.items():
                 context.curr_group_rows = group
-                context.curr_row_index = 0  # Инициализируем для агрегации
-                # Для каждой группы собираем агрегированные данные (здесь можно выполнять агрегатные функции)
-                result_rows.append([self.execute(expr, context) for expr in node.selects.exprs])
+                for row in group:
+                    row_result = []
+                    context.curr_row_index = context.curr_table.rows.index(row)
+
+                    for expr in node.selects.exprs:
+                        executed_value = self.execute(expr, context)
+                        if isinstance(expr, IdentNode) and expr.name == '*':
+                            row_result.extend(executed_value)  # Добавляем все колонки напрямую
+                        else:
+                            row_result.append(executed_value)
+
+                    result_rows.append(row_result)
         else:
             context.curr_group_rows = None
 

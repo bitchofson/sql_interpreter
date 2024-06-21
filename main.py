@@ -5,7 +5,7 @@ from sqlexecute.context import Context
 from sqlexecute.intepreter import SQLInterpreter
 
 
-def test_1(context: Context, interpreter: SQLInterpreter):
+def where_test_1(context: Context, interpreter: SQLInterpreter):
     table_1 = Table(
         col_names=['col1', 'col2'],
         rows=[
@@ -19,13 +19,13 @@ def test_1(context: Context, interpreter: SQLInterpreter):
     context.curr_table = table_1
     context.tables['table_1'] = table_1
 
-    sql_query = '''select * from table_1 where col1>4'''
+    sql_query = '''select * from table_1 where col1 < 3'''
     prog = sqlparser.mel_parser.parse(sql_query)
     print(*prog.tree, sep=os.linesep)
     print(interpreter.execute(prog, context))
 
 
-def test_2(context: Context, interpreter: SQLInterpreter):
+def order_by_test_1(context: Context, interpreter: SQLInterpreter):
     table_2 = Table(
         col_names=['age', 'name'],
         rows=[
@@ -46,19 +46,20 @@ def test_2(context: Context, interpreter: SQLInterpreter):
     print(interpreter.execute(prog, context))
 
 
-def test_3(context: Context, interpreter: SQLInterpreter):
+def group_by_test_1(context: Context, interpreter: SQLInterpreter):
     table_3 = Table(
         col_names=['apple', 'banana'],
         rows=[
             [18, 5],
-            [14, 87],
+            [14, 8],
             [32, 32],
             [2, 8],
-            [11, 12]
+            [14, 32]
         ]
     )
-    sql_query = '''select apple from table_3 where apple >= 4'''
+    sql_query = '''select apple, banana from table_3 group by banana'''
     prog = sqlparser.mel_parser.parse(sql_query)
+    print(*prog.tree, sep=os.linesep)
 
     context.curr_table = table_3
     context.tables['table_3'] = table_3
@@ -70,9 +71,9 @@ def main():
     context = Context()
     interpreter = SQLInterpreter()
 
-    # test_1(context=context, interpreter=interpreter)
-    # test_2(context=context, interpreter=interpreter)
-    # test_3(context=context, interpreter=interpreter)
+    # where_test_1(context=context, interpreter=interpreter)
+    # order_by_test_1(context=context, interpreter=interpreter)
+    # group_by_test_1(context=context, interpreter=interpreter)
 
 
 if __name__ == '__main__':
