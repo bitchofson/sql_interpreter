@@ -67,7 +67,6 @@ class SQLInterpreter:
             result_rows = self.execute(node.where, context)
         else:
             result_rows = context.curr_table.rows
-        #result_rows = self.execute(node.where, context)
         if node.order_by.exprs:
             context.curr_table.rows = result_rows
             result_rows = self.execute(node.order_by, context)

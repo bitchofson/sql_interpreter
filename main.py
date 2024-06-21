@@ -36,11 +36,12 @@ def test_2(context: Context, interpreter: SQLInterpreter):
     )
     sql_query = '''select name from table_2 where age >= 18 order by name'''
     prog = sqlparser.mel_parser.parse(sql_query)  
+    print(*prog.tree, sep=os.linesep)
 
     context.curr_table = table_2
     context.tables['table_2'] = table_2
-
-    print(interpreter.execute(prog, context))
+    
+    #print(interpreter.execute(prog, context))
 
 def test_3(context: Context, interpreter: SQLInterpreter):
     table_3 = Table(
@@ -68,7 +69,7 @@ def main():
     interpreter = SQLInterpreter() 
 
     #test_1(context=context, interpreter=interpreter)
-    #test_2(context=context, interpreter=interpreter)
+    test_2(context=context, interpreter=interpreter)
     #test_3(context=context, interpreter=interpreter)
     
 

@@ -20,6 +20,8 @@ column_name: CNAME | ALL
 string_value: /'[^']*'/
 
 ADD: "+"
+ASC: "ASC"i
+DESC: "DESC"i
 SUB: "-"
 MUL: "*"
 DIV: "/"
@@ -69,6 +71,10 @@ call: column_name "(" ( expr ( "," expr )* )? ")"
 
 ?expr: logical_or
 
+order_expr: expr [ASC | DESC]
+              
+order_expr_list: order_expr ("," order_expr)* -> order_expr_list
+
 expr_list: expr ("," expr)* -> expr_list
 
 ?table: column_name
@@ -91,7 +97,7 @@ empty_expr_list:  -> expr_list
 ?having: "having"i expr -> having_clause
     | empty_expr_list
 
-?order_by: "order"i "by"i expr_list -> order_clause
+?order_by: "order"i "by"i order_expr_list -> order_clause
     | empty_expr_list
 
 select: "select"i as_expr_list "from"i join where group_by having order_by

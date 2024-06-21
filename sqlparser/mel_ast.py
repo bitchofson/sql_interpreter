@@ -178,18 +178,43 @@ class HavingClauseNode(AstNode):
     def __str__(self) -> str:
         return 'having ' + ' and '.join(str(expr) for expr in self.exprs)
 
-
-class OrderClauseNode(AstNode):
-    def __init__(self, *exprs: ExprNode):
+class OrderExprNode(AstNode):
+    def __init__(self, expr: ExprNode, order: Optional[str] = None):
         super().__init__()
-        self.exprs = exprs
+        self.expr = expr
+        self.order = order
 
     @property
     def childs(self) -> Tuple[ExprNode, ...]:
-        return self.exprs
+        return (self.expr,)
 
     def __str__(self) -> str:
-        return 'order by ' + ', '.join(str(expr) for expr in self.exprs)
+        return f"{str(self.expr)} {self.order.upper() if self.order else 'ASC'}"
+
+class OrderExprListNode(AstNode):
+    def __init__(self, *order_exprs: OrderExprNode):
+        super().__init__()
+        self.order_exprs = order_exprs
+
+    @property
+    def childs(self) -> Tuple[OrderExprNode, ...]:
+        return self.order_exprs
+
+    def __str__(self) -> str:
+        return ', '.join(str(order_expr) for order_expr in self.order_exprs)
+
+class OrderClauseNode(AstNode):
+    def __init__(self, *order_exprs: OrderExprNode):
+        super().__init__()
+        self.order_exprs = order_exprs
+
+    @property
+    def childs(self) -> Tuple[OrderExprNode, ...]:
+        return self.order_exprs
+
+    def __str__(self) -> str:
+        return 'order by ' + ', '.join(str(order_expr) for order_expr in self.order_exprs)
+
 
 
 class SelectNode(AstNode):
