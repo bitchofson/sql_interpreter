@@ -1,6 +1,8 @@
 from sqlparser.mel_ast import *
 from .context import Context
 from typing import Any
+
+
 class SQLInterpreter:
 
     def execute(self, node: AstNode, context: Context) -> Any | None:
@@ -28,6 +30,10 @@ class SQLInterpreter:
             return self.executeSelectNode(node, context)
         if isinstance(node, StrNode):
             return self.executeStrNode(node, context)
+        if isinstance(node, OrderExprNode):
+            return self.executeOrderExprNode(node, context)
+        if isinstance(node, OrderExprListNode):
+            return self.executeOrderExprListNode(node, context)
         raise Exception(f'Unsupported node type: {type(node)}')
 
     def executeAsExprNode(self, node: AsExprNode, context: Context) -> Any:
@@ -53,21 +59,40 @@ class SQLInterpreter:
     def executeHavingClauseNode(self, node: HavingClauseNode, context: Context) -> Any:
         raise NotImplementedError('HavingClauseNode execution not implemented yet')
 
+    def executeOrderExprNode(self, node: OrderExprNode, context: Context) -> tuple:
+        value = self.execute(node.expr, context)
+        is_desc = node.order and node.order.upper() == 'DESC'
+        return value, is_desc
+
+    def executeOrderExprListNode(self, node: OrderExprListNode, context: Context) -> list:
+        return [self.execute(order_expr, context) for order_expr in node.order_exprs]
+
     def executeOrderClauseNode(self, node: OrderClauseNode, context: Context) -> Any:
         def key_func(row):
             context.curr_row_index = context.curr_table.rows.index(row)
-            return tuple(self.execute(expr, context) for expr in node.exprs)
-        
-        sorted_rows = sorted(context.curr_table.rows, key=key_func)
+            # Получаем значения и направления сортировки
+            sort_keys = []
+            for expr in node.order_exprs:
+                value, is_desc = self.execute(expr, context)[0]
+                sort_keys.append((value, is_desc))
+            return sort_keys
+
+        sorted_rows = sorted(context.curr_table.rows, key=lambda row: [val for val, _ in key_func(row)], reverse=False)
+        # Корректируем порядок в зависимости от направления
+        for idx, expr in enumerate(node.order_exprs):
+            is_desc = self.execute(expr, context)[0][1]
+            if is_desc:
+                sorted_rows = sorted(sorted_rows, key=lambda row: key_func(row)[idx][0], reverse=True)
+
         return sorted_rows
-    
+
     def executeSelectNode(self, node: SelectNode, context: Context) -> Any:
         context.curr_table = context.get_table(node.tables.name)
         if node.where:
             result_rows = self.execute(node.where, context)
         else:
             result_rows = context.curr_table.rows
-        if node.order_by.exprs:
+        if node.order_by:
             context.curr_table.rows = result_rows
             result_rows = self.execute(node.order_by, context)
         result = []

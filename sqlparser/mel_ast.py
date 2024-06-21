@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, List
 from enum import Enum
 
+
 class AstNode(ABC):
     @property
     def childs(self) -> Tuple[Optional['AstNode'], ...]:
@@ -12,7 +13,7 @@ class AstNode(ABC):
         pass
 
     @property
-    def tree(self) -> List[str]:  
+    def tree(self) -> List[str]:
         res = [str(self)]
         childs = self.childs
         for i, child in enumerate(childs):
@@ -59,6 +60,7 @@ class IdentNode(ValueNode):
     def __str__(self) -> str:
         return str(self.name)
 
+
 class StrNode(ValueNode):
     def __init__(self, value: str):
         super().__init__()
@@ -66,6 +68,7 @@ class StrNode(ValueNode):
 
     def __str__(self) -> str:
         return f"'{self.value}'"
+
 
 class BinOp(Enum):
     ADD = '+'
@@ -178,6 +181,7 @@ class HavingClauseNode(AstNode):
     def __str__(self) -> str:
         return 'having ' + ' and '.join(str(expr) for expr in self.exprs)
 
+
 class OrderExprNode(AstNode):
     def __init__(self, expr: ExprNode, order: Optional[str] = None):
         super().__init__()
@@ -191,6 +195,7 @@ class OrderExprNode(AstNode):
     def __str__(self) -> str:
         return f"{str(self.expr)} {self.order.upper() if self.order else 'ASC'}"
 
+
 class OrderExprListNode(AstNode):
     def __init__(self, *order_exprs: OrderExprNode):
         super().__init__()
@@ -202,6 +207,7 @@ class OrderExprListNode(AstNode):
 
     def __str__(self) -> str:
         return ', '.join(str(order_expr) for order_expr in self.order_exprs)
+
 
 class OrderClauseNode(AstNode):
     def __init__(self, *order_exprs: OrderExprNode):
@@ -216,10 +222,9 @@ class OrderClauseNode(AstNode):
         return 'order by ' + ', '.join(str(order_expr) for order_expr in self.order_exprs)
 
 
-
 class SelectNode(AstNode):
-    def __init__(self, selects: ExprListNode, tables: IdentNode, where: WhereClauseNode=None,
-                 group_by: GroupClauseNode=None, having: HavingClauseNode=None, order_by: OrderClauseNode=None):
+    def __init__(self, selects: ExprListNode, tables: IdentNode, where: WhereClauseNode = None,
+                 group_by: GroupClauseNode = None, having: HavingClauseNode = None, order_by: OrderClauseNode = None):
         super().__init__()
         self.selects = selects
         self.tables = tables
@@ -229,7 +234,8 @@ class SelectNode(AstNode):
         self.order_by = order_by
 
     @property
-    def childs(self) -> Tuple[ExprListNode, IdentNode, WhereClauseNode, GroupClauseNode, HavingClauseNode, OrderClauseNode]:
+    def childs(self) -> Tuple[
+        ExprListNode, IdentNode, WhereClauseNode, GroupClauseNode, HavingClauseNode, OrderClauseNode]:
         return self.selects, self.tables, self.where, self.group_by, self.having, self.order_by
 
     def __str__(self) -> str:

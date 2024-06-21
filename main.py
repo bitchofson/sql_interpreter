@@ -4,6 +4,7 @@ from sqlexecute.table import Table
 from sqlexecute.context import Context
 from sqlexecute.intepreter import SQLInterpreter
 
+
 def test_1(context: Context, interpreter: SQLInterpreter):
     table_1 = Table(
         col_names=['col1', 'col2'],
@@ -19,9 +20,10 @@ def test_1(context: Context, interpreter: SQLInterpreter):
     context.tables['table_1'] = table_1
 
     sql_query = '''select * from table_1 where col1=1 '''
-    prog = sqlparser.mel_parser.parse(sql_query) 
+    prog = sqlparser.mel_parser.parse(sql_query)
     print(*prog.tree, sep=os.linesep)
     print(interpreter.execute(prog, context))
+
 
 def test_2(context: Context, interpreter: SQLInterpreter):
     table_2 = Table(
@@ -34,14 +36,15 @@ def test_2(context: Context, interpreter: SQLInterpreter):
             [18, 'alex']
         ]
     )
-    sql_query = '''select name from table_2 where age >= 18 order by name'''
-    prog = sqlparser.mel_parser.parse(sql_query)  
+    sql_query = '''select name from table_2 where age >= 10 order by name'''
+    prog = sqlparser.mel_parser.parse(sql_query)
     print(*prog.tree, sep=os.linesep)
 
     context.curr_table = table_2
     context.tables['table_2'] = table_2
-    
-    #print(interpreter.execute(prog, context))
+
+    print(interpreter.execute(prog, context))
+
 
 def test_3(context: Context, interpreter: SQLInterpreter):
     table_3 = Table(
@@ -55,7 +58,7 @@ def test_3(context: Context, interpreter: SQLInterpreter):
         ]
     )
     sql_query = '''select apple from table_3 where apple >= 4'''
-    prog = sqlparser.mel_parser.parse(sql_query)  
+    prog = sqlparser.mel_parser.parse(sql_query)
 
     context.curr_table = table_3
     context.tables['table_3'] = table_3
@@ -64,15 +67,13 @@ def test_3(context: Context, interpreter: SQLInterpreter):
 
 
 def main():
-    
     context = Context()
-    interpreter = SQLInterpreter() 
+    interpreter = SQLInterpreter()
 
-    #test_1(context=context, interpreter=interpreter)
+    # test_1(context=context, interpreter=interpreter)
     test_2(context=context, interpreter=interpreter)
-    #test_3(context=context, interpreter=interpreter)
-    
+    # test_3(context=context, interpreter=interpreter)
 
-    
+
 if __name__ == '__main__':
     main()
