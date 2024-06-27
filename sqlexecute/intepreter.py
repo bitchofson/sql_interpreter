@@ -1,3 +1,4 @@
+import re
 from sqlparser.mel_ast import *
 from .context import Context
 from typing import Any
@@ -61,7 +62,6 @@ class SQLInterpreter:
 
             for expr in node.exprs:
                 value = self.execute(expr, context)[0]
-                # Преобразуем список в кортеж, чтобы он стал хэшируемым
                 if isinstance(value, list):
                     value = tuple(value)
                 key_elements.append(value)
@@ -87,7 +87,6 @@ class SQLInterpreter:
     def executeOrderClauseNode(self, node: OrderClauseNode, context: Context) -> Any:
         def key_func(row):
             context.curr_row_index = context.curr_table.rows.index(row)
-            # Получаем значения и направления сортировки
             sort_keys = []
             for expr in node.order_exprs:
                 value, is_desc = self.execute(expr, context)[0]
@@ -95,7 +94,6 @@ class SQLInterpreter:
             return sort_keys
 
         sorted_rows = sorted(context.curr_table.rows, key=lambda row: [val for val, _ in key_func(row)], reverse=False)
-        # Корректируем порядок в зависимости от направления
         for idx, expr in enumerate(node.order_exprs):
             is_desc = self.execute(expr, context)[0][1]
             if is_desc:
@@ -111,7 +109,6 @@ class SQLInterpreter:
             result_rows = context.curr_table.rows
 
         if isinstance(node.group_by, GroupClauseNode):
-            # Группировка строк
             context.curr_table.rows = result_rows
             grouped_rows = self.execute(node.group_by, context)
             result_rows = []
@@ -125,7 +122,7 @@ class SQLInterpreter:
                     for expr in node.selects.exprs:
                         executed_value = self.execute(expr, context)
                         if isinstance(expr, IdentNode) and expr.name == '*':
-                            row_result.extend(executed_value)  # Добавляем все колонки напрямую
+                            row_result.extend(executed_value)
                         else:
                             row_result.append(executed_value)
 
@@ -144,7 +141,7 @@ class SQLInterpreter:
             for expr in node.selects.exprs:
                 executed_value = self.execute(expr, context)
                 if isinstance(expr, IdentNode) and expr.name == '*':
-                    row_result.extend(executed_value)  # Добавляем элементы напрямую
+                    row_result.extend(executed_value)
                 else:
                     row_result.append(executed_value)
             result.append(row_result)
@@ -185,7 +182,9 @@ class SQLInterpreter:
         if node.op == BinOp.OR:
             return arg1 or arg2
         if node.op == BinOp.LIKE:
-            return str(arg1) in str(arg2)
+            pattern = arg2.replace('%', '.*').replace('_', '.')
+            pattern = '^' + pattern + '$'
+            return re.match(pattern, arg1) is not None        
         raise Exception(f'Unsupported binary operator: {node.op}')
 
     def executeStrNode(self, node: StrNode, context: Context) -> str:
