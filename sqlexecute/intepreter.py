@@ -6,6 +6,11 @@ from typing import Any
 
 class SQLInterpreter:
 
+    def __init__(self):
+        self.functions = {
+            'SUM': self.__sum_func,
+        }
+
     def execute(self, node: AstNode, context: Context) -> Any | None:
         if isinstance(node, NumNode):
             return self.executeNumNode(node, context)
@@ -44,7 +49,11 @@ class SQLInterpreter:
         return [self.execute(expr, context) for expr in node.exprs]
 
     def executeCallNode(self, node: CallNode, context: Context) -> Any:
-        raise NotImplementedError('CallNode execution not implemented yet')
+        function_name = node.func.name.upper()
+        if function_name in self.functions:
+            return self.functions[function_name](node.params, context)
+        else:
+            raise Exception(f'Unsupported function: {function_name}')
 
     def executeWhereClauseNode(self, node: WhereClauseNode, context: Context) -> list:
         result = []
@@ -103,48 +112,69 @@ class SQLInterpreter:
 
     def executeSelectNode(self, node: SelectNode, context: Context) -> Any:
         context.curr_table = context.get_table(node.tables.name)
+
+        # Выполнение WHERE
         if isinstance(node.where, WhereClauseNode):
             result_rows = self.execute(node.where, context)
         else:
             result_rows = context.curr_table.rows
 
-        if isinstance(node.group_by, GroupClauseNode):
+        if any(isinstance(expr, CallNode) for expr in node.selects.exprs):
+            row_result = []
             context.curr_table.rows = result_rows
-            grouped_rows = self.execute(node.group_by, context)
-            result_rows = []
+            context.curr_group_rows = result_rows  
 
-            for group_key, group in grouped_rows.items():
-                context.curr_group_rows = group
-                for row in group:
-                    row_result = []
-                    context.curr_row_index = context.curr_table.rows.index(row)
-
-                    for expr in node.selects.exprs:
-                        executed_value = self.execute(expr, context)
-                        if isinstance(expr, IdentNode) and expr.name == '*':
-                            row_result.extend(executed_value)
-                        else:
-                            row_result.append(executed_value)
-
-                    result_rows.append(row_result)
+            for expr in node.selects.exprs:
+                aggregated_result = self.execute(expr, context)
+                if isinstance(expr, IdentNode) and expr.name == '*':
+                    row_result.extend(aggregated_result)
+                else:
+                    row_result.append(aggregated_result)
+            result_rows = [row_result]
         else:
-            context.curr_group_rows = None
+            # Выполнение GROUP BY
+            if isinstance(node.group_by, GroupClauseNode):
+                context.curr_table.rows = result_rows
+                grouped_rows = self.execute(node.group_by, context)
+                result_rows = []
 
+                for group_key, group in grouped_rows.items():
+                    context.curr_group_rows = group
+                    for row in group:
+                        row_result = []
+                        context.curr_row_index = context.curr_table.rows.index(row)
+
+                        for expr in node.selects.exprs:
+                            executed_value = self.execute(expr, context)
+                            if isinstance(expr, IdentNode) and expr.name == '*':
+                                row_result.extend(executed_value)
+                            else:
+                                row_result.append(executed_value)
+
+                        result_rows.append(row_result)
+            else:
+                context.curr_group_rows = None
+
+        # Выполнение ORDER BY
         if isinstance(node.order_by, OrderClauseNode):
             context.curr_table.rows = result_rows
             result_rows = self.execute(node.order_by, context)
 
+        # Формирование результата SELECT
         result = []
         for row in result_rows:
-            context.curr_row_index = context.curr_table.rows.index(row)
-            row_result = []
-            for expr in node.selects.exprs:
-                executed_value = self.execute(expr, context)
-                if isinstance(expr, IdentNode) and expr.name == '*':
-                    row_result.extend(executed_value)
-                else:
-                    row_result.append(executed_value)
-            result.append(row_result)
+            if isinstance(row, list):
+                result.append(row)
+            else:
+                context.curr_row_index = context.curr_table.rows.index(row)
+                row_result = []
+                for expr in node.selects.exprs:
+                    executed_value = self.execute(expr, context)
+                    if isinstance(expr, IdentNode) and expr.name == '*':
+                        row_result.extend(executed_value)
+                    else:
+                        row_result.append(executed_value)
+                result.append(row_result)
 
         return result
 
@@ -189,3 +219,17 @@ class SQLInterpreter:
 
     def executeStrNode(self, node: StrNode, context: Context) -> str:
         return node.value
+
+    def __sum_func(self, params, context):
+        total = 0
+        if context.curr_group_rows is not None:
+            rows = context.curr_group_rows
+        else:
+            rows = context.curr_table.rows
+
+        for row in rows:
+            context.curr_row_index = context.curr_table.rows.index(row)
+            value = self.execute(params[0], context)
+            if value is not None:
+                total += value
+        return total

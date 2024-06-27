@@ -84,16 +84,54 @@ def like_test_1(context: Context, interpreter: SQLInterpreter):
 
     print(interpreter.execute(prog, context))
 
+def having_test_1(context: Context, interpreter: SQLInterpreter):
+    table_5 = Table(
+        col_names=[ 'product_id', 'quantity'],
+        rows=[
+            [1, 50],
+            [2, 75],
+            [1, 60],
+            [3, 40],
+        ]
+    )
+    sql_query = '''select product_id, SUM(quantity) from table_5 group by product_id having sum(quantity) > 100 '''
+    prog = sqlparser.mel_parser.parse(sql_query)
+    print(*prog.tree, sep=os.linesep)
+
+    context.curr_table = table_5
+    context.tables['table_5'] = table_5
+
+    print(interpreter.execute(prog, context))
+
+def window_func_test_1(context: Context, interpreter: SQLInterpreter):
+    table_6 = Table(
+        col_names=[ 'product_id', 'quantity'],
+        rows=[
+            [1, 50],
+            [2, 75],
+            [1, 60],
+            [3, 40],
+        ]
+    )
+    sql_query = '''select SUM(quantity) from table_6 where product_id = 1'''
+    prog = sqlparser.mel_parser.parse(sql_query)
+    print(*prog.tree, sep=os.linesep)
+
+    context.curr_table = table_6
+    context.tables['table_6'] = table_6
+
+    print(interpreter.execute(prog, context))
 
 def main():
     context = Context()
     interpreter = SQLInterpreter()
 
-    where_test_1(context=context, interpreter=interpreter)
-    order_by_test_1(context=context, interpreter=interpreter)
-    group_by_test_1(context=context, interpreter=interpreter)
-    like_test_1(context=context, interpreter=interpreter)
-
+    #where_test_1(context=context, interpreter=interpreter)
+    #order_by_test_1(context=context, interpreter=interpreter)
+    #group_by_test_1(context=context, interpreter=interpreter)
+    #like_test_1(context=context, interpreter=interpreter)
+    #having_test_1(context=context, interpreter=interpreter)
+    window_func_test_1(context=context, interpreter=interpreter)
 
 
 if __name__ == '__main__':
